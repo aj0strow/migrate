@@ -43,15 +43,13 @@ var UPDATE_DOWN = `
 function * up (db, limit) {
   var structs = yield db.exec(SELECT_UPS)
 
-  if (arguments.length == 2) {
-    if (Number.isInteger(limit)) {
-      structs = structs.slice(0, limit)
-    } else {
-      structs = structs.filter(function (struct) {
-        return struct.id <= limit
-            || struct.id.startsWith(limit)
-      })
-    }
+  if (Number.isInteger(limit)) {
+    structs = structs.slice(0, limit)
+  } else if (limit) {
+    structs = structs.filter(function (struct) {
+      return struct.id <= limit
+          || struct.id.startsWith(limit)
+    })
   }
 
   yield structs.map(function (struct) {
@@ -69,14 +67,12 @@ function * up (db, limit) {
 function * down (db, limit) {
   var structs = yield db.exec(SELECT_DOWNS)
 
-  if (arguments.length == 2) {
-    if (Number.isInteger(limit)) {
-      structs = structs.slice(0, limit)
-    } else {
-      structs = structs.filter(function (struct) {
-        return struct.id >= limit
-      })
-    }
+  if (Number.isInteger(limit)) {
+    structs = structs.slice(0, limit)
+  } else if (limit) {
+    structs = structs.filter(function (struct) {
+      return struct.id >= limit
+    })
   }
 
   yield structs.map(function (struct) {
@@ -91,7 +87,7 @@ function * down (db, limit) {
 // migrate.redo(db)
 // migrate.redo(db, 3)
 function * redo (db, limit) {
-  if (arguments.length == 1) {
+  if (!Number.isInteger(limit)) {
     limit = 1
   }
   yield down(db, limit)

@@ -30,7 +30,12 @@ Connection.prototype = {
   },
 
   connect: function (cb) {
-    this.db.connect(cb)
+    return new Promise(function (resolve, reject) {
+      this.db.connect(function (e) {
+        if (e) { return reject(e) }
+        resolve()
+      })
+    }.bind(this))
   },
 
   end: function () {

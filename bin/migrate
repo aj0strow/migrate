@@ -22,7 +22,7 @@ var USAGE = `
   Options:
 
     -h, --help          output usage information
-    -v, --version       output the version number
+    --version           output the version number
     -n, --count <n>     number of migrations
     --dir <path>        migrations directory (default pwd)
     --url/uri <url>     postgres url (default $DATABASE_URL)
@@ -31,15 +31,15 @@ var USAGE = `
 
     Run all pending migrations.
 
-     $ migrate up --url $DATABASE_URL --dir db/migrations
+     $ migrate up --url postgres://localhost/dbname --dir db/migrations
 
     Undo the last three migrations.
 
      $ migrate down --dir db/migrations -n 3
 
-    Redo the last migration.
+    Redo the last migration with debug info.
 
-     $ migrate redo --dir db/migrations
+     $ DEBUG=migrate migrate redo --dir db/migrations
 `
 
 // options
@@ -85,19 +85,18 @@ var pg = require('../src/pg')
 var parse = require('../src/parse')
 var sync = require('../src/sync')
 var migrate = require('../src/migrate')
+var debug = require('../src/debug')
 
 var db = pg(url)
 
 co(function * () {
+  yield db.connect()
   var structs = yield parse.dir(dir)
   if (!structs.length) {
     console.error('no sql files found in %s', dir)
     process.exit(1)
   }
   yield sync(db, structs)
-
-  console.log('command')
-  console.log(command)
 
   switch (command) {
   case 'up':
@@ -114,10 +113,9 @@ co(function * () {
     process.exit(1)
   }
 }).then(function () {
-  console.log('called')
+  debug('done')
   process.exit(0)
 }).catch(function (e) {
-  console.log('called')
   console.error(e)
   process.exit(1)
 })

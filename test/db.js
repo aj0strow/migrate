@@ -14,8 +14,8 @@ module.exports = db
 
 // module
 
-before(function (cb) {
-  db.connect(cb)
+before(function * () {
+  yield db.connect()
 })
 
 afterEach(function * () {
