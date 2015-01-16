@@ -44,6 +44,8 @@ function * up (db, options) {
       return struct.id <= options.id
           || struct.id.startsWith(options.id)
     })
+  } else if (options.n > 0) {
+    structs = structs.slice(0, options.n)
   }
 
   yield structs.map(function (struct) {
@@ -62,6 +64,8 @@ function * down (db, options) {
     structs = structs.filter(function (struct) {
       return struct.id >= options.id
     })
+  } else if (options.n > 0) {
+    structs = structs.slice(0, options.n)
   }
 
   yield structs.map(function (struct) {

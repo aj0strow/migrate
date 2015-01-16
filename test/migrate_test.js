@@ -35,6 +35,12 @@ describe('migrate', function () {
       var rows = yield db.exec(SELECT, [ 'Gary' ])
       assert.equal(0, rows.length)
     })
+
+    it('should allow stop n', function * () {
+      yield migrate.up(db, { n: 1 })
+      var rows = yield db.exec(SELECT, [ 'Gary' ])
+      assert.equal(0, rows.length)
+    })
   })
 
   describe('down', function () {
@@ -48,6 +54,12 @@ describe('migrate', function () {
     it('should allow stop id', function * () {
       yield migrate.up(db)
       yield migrate.down(db, { id: '002' })
+      yield db.exec(SELECT, [ 'AJ' ])
+    })
+
+    it('should allow stop n', function * () {
+      yield migrate.up(db)
+      yield migrate.down(db, { n: 1 })
       yield db.exec(SELECT, [ 'AJ' ])
     })
   })
