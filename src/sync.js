@@ -14,18 +14,20 @@ var CREATE_TABLE = `
     id text primary key,
     up text not null,
     down text not null,
+    up_hash text not null,
+    down_hash text not null,
     migrated_at timestamp
   );
 `
 
 var SELECT_ID = `
   select count(*) from migrations
-  where id = $1;
+  where id = $1 and migrated_at <> null;
 `
 
 var INSERT = `
-  insert into migrations (id, up, down)
-  values ($1, $2, $3);
+  insert into migrations (id, up, down, up_hash, down_hash)
+  values ($1, $2, $3, $4, $5);
 `
 
 // module
@@ -41,6 +43,6 @@ function * sync (db, structs) {
 function * syncstruct (db, struct) {
   var rows = yield db.exec(SELECT_ID, [ struct.id ])
   if (rows[0].count == '0') {
-    return db.exec(INSERT, [ struct.id, struct.up, struct.down ])
+    return db.exec(INSERT, [ struct.id, struct.up, struct.down, struct.up_hash, struct.down_hash ])
   }
 }

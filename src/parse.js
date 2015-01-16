@@ -2,6 +2,7 @@
 
 var fs = require('co-fs')
 var path = require('path')
+var crypto = require('crypto')
 
 // modules
 
@@ -11,6 +12,7 @@ var debug = require('./debug')
 
 exports.dir = parsedir
 exports.file = parsefile
+exports.hash = hash
 
 // module
 
@@ -54,7 +56,22 @@ function parsestr (str) {
     down: down.join('\n').trim(),
   }
 
+  struct.up_hash = hash(struct.up)
+  struct.down_hash = hash(struct.down)
+
   return struct
+}
+
+function hash (str) {
+  // remove comments
+  str = str.replace(/--[^\r\n]*/g, '')
+  str = str.replace(/\/\*[\w\W]*?(?=\*\/)\*\//g, '')
+
+  // remove whitespace
+  str = str.replace(/\s/g, '')
+
+  // accentuate small differences with md5 hash
+  return crypto.createHash('md5').update(str).digest('hex')
 }
 
 // helpers
