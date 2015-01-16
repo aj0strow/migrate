@@ -1,8 +1,7 @@
 // dependencies
 
-var fs = require('fs')
+var fs = require('co-fs')
 var path = require('path')
-var async = require('async')
 
 // modules
 
@@ -15,59 +14,37 @@ module.exports = sync
 
 // queries
 
-var CREATE_TABLE = 'CREATE TABLE IF NOT EXISTS migrations (id text primary key, completed_at integer);'
-var SELECT_ID = 'SELECT count(*) FROM migrations WHERE id=$1;'
-var INSERT_ID = 'INSERT INTO migrations (id) VALUES ($1);'
+var CREATE_TABLE = `
+  create table if not exists migrations (
+    id text primary key,
+    up text not null,
+    down text not null,
+    migrated_at timestamp
+  );
+`
+
+var SELECT_ID = `
+  select count(*) from migrations
+  where id = $1;
+`
+
+var INSERT_ID = `
+   insert into migrations (id, up, down)
+   values ($1, $2, $3);
+`
 
 // module
 
-function sync (db, dir, cb) {
+function * sync (db, structs) {
   debug('syncing file system')
-  async.series([
-    function (cb) {
-      exec(db, CREATE_TABLE, [], cb)
-    },
-    function (cb) {
-      checkdir(db, dir, cb)
-    },
-  ], cb)
-}
-
-function checkdir (db, dir, cb) {
-  async.waterfall([
-    function (cb) {
-      parse.dir(dir, cb)
-    },
-    function (structs, cb) {
-      checkstructs(db, structs, cb)
-    },
-  ], cb)
-}
-
-function checkstructs (db, structs, cb) {
-  async.each(structs, function (struct, cb) {
-    checkstruct(db, struct, cb)
-  }, cb)
-}
-
-function checkstruct (db, struct, cb) {
-  exec(db, SELECT_ID, [ struct.id ], function (e, res) {
-    if (e) { return cb(e) }
-    if (res.rows[0].count == '1') {
-      return cb()
-    }
-    exec(db, INSERT_ID, [ struct.id ], cb)
+  yield db.exec(CREATE_TABLE)
+  return yield structs.map(function (struct) {
+    return syncstruct(db, struct)
   })
 }
 
-function exec (db, sql, args, cb) {
-  var exec = function (cb) {
-    if (args.length) {
-      db.query(sql, args, cb)
-    } else {
-      db.query(sql, cb)
-    }
-  }
-  if (cb) { exec(cb) }
-  return exec
+function * syncstruct (db, struct) {
+  var res = yield db.exec(SELECT_ID, [ struct.id ])
+  if (res.rows[0].count == '1') { return }
+  return yield db.exec(INSERT_ID, [ struct.id, struct.up, struct.down ])
 }

@@ -9,24 +9,20 @@ var parse = require('../src/parse')
 // tests
 
 describe('parse.file', function () {
-  it('should separate parts', function (cb) {
-    var file = __dirname + '/migrations/001_create_users.sql'
-    parse.file(file, function (e, struct) {
-      if (e) { return cb(e) }
-      assert.equal('001_create_users', struct.id)
-      assert.equal('drop table users;', struct.down)
-      cb()
-    })
+  var file = __dirname + '/migrations/001_create_users.sql'
+
+  it('should separate parts', function * () {
+    var struct = yield parse.file(file)
+    assert.equal('001_create_users', struct.id)
+    assert.equal('drop table users;', struct.down)
   })
 })
 
 describe('parse.dir', function () {
-  it('should parse all files', function (cb) {
-    var dir = __dirname + '/migrations'
-    parse.dir(dir, function (e, structs) {
-      if (e) { return cb(e) }
-      assert.equal(1, structs.length)
-      cb()
-    })
+  var dir = __dirname + '/migrations'
+
+  it('should parse all files', function * () {
+    var structs = yield parse.dir(dir)
+    assert.equal(1, structs.length)
   })
 })
