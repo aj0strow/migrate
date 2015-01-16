@@ -38,9 +38,9 @@ function parsestr (str) {
   var state = 0
 
   str.split('\n').forEach(function (line) {
-    if (startsWith(line, '--+ up')) {
+    if (line.startsWith('--+ up')) {
       state = 1
-    } else if (startsWith(line, '--+ down')) {
+    } else if (line.startsWith('--+ down')) {
       state = 2
     } else if (state == 1) {
       up.push(line)
@@ -61,8 +61,4 @@ function parsestr (str) {
 
 function isSQL (file) {
   return path.extname(file) == '.sql'
-}
-
-function startsWith(str, s) {
-  return str.substring(0, s.length) == s
 }
