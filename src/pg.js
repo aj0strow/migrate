@@ -19,7 +19,7 @@ Connection.prototype = {
     return new Promise(function (resolve, reject) {
       function cb (e, response) {
         if (e) { return reject(e) }
-        resolve(response)
+        resolve(response.rows)
       }
       if (args) {
         this.db.query(str, args, cb)

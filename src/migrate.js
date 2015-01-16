@@ -9,10 +9,22 @@ exports.down = down
 
 // queries
 
+var SELECT_UPS = `
+  select id, up from migrations
+  where migrated_at is null
+  order by id asc;
+`
+
 var UPDATE_UP = `
   update migrations
   set migrated_at = now()
   where id = $1;
+`
+
+var SELECT_DOWNS = `
+  select id, down from migrations
+  where migrated_at is not null
+  order by id desc;
 `
 
 var UPDATE_DOWN = `
@@ -23,19 +35,8 @@ var UPDATE_DOWN = `
 
 // module
 
-var SELECT_UPS = `
-  select id, up from migrations
-  where migrated_at is null
-  order by id asc;
-`
-
-var SELECT_DOWNS = `
-  select id, down from migrations
-  where migrated_at is not null
-  order by id desc;
-`
-
-function * up (db, structs) {
+function * up (db) {
+  var structs = yield db.exec(SELECT_UPS)
   yield structs.map(function (struct) {
     debug('migrate up %s', struct.id)
     return db.exec(struct.up).then(function () {
@@ -44,10 +45,10 @@ function * up (db, structs) {
   })
 }
 
-function * down (db, structs, cb) {
+function * down (db) {
+  var structs = yield db.exec(SELECT_DOWNS)
   yield structs.map(function (struct) {
     debug('migrate down %s', struct.id)
-    console.log(struct.down)
     return db.exec(struct.down).then(function () {
       return db.exec(UPDATE_DOWN, [ struct.id ])
     })

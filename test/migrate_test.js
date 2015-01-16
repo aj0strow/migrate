@@ -27,13 +27,13 @@ describe('migrate', function () {
   })
 
   it('should migrate up', function * () {
-    yield migrate.up(db, [ struct ])
+    yield migrate.up(db)
     yield db.exec(INSERT, [ 'AJ' ])
   })
   
   it('should migrate down', function * () {
-    yield migrate.up(db, [ struct ])
-    yield migrate.down(db, [ struct ])
+    yield migrate.up(db)
+    yield migrate.down(db)
     try {
       yield db.exec(INSERT, [ 'AJ' ])
     } catch (e) {

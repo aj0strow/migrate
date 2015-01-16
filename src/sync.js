@@ -28,7 +28,7 @@ var SELECT_ID = `
   where id = $1;
 `
 
-var INSERT_ID = `
+var INSERT = `
    insert into migrations (id, up, down)
    values ($1, $2, $3);
 `
@@ -44,7 +44,8 @@ function * sync (db, structs) {
 }
 
 function * syncstruct (db, struct) {
-  var res = yield db.exec(SELECT_ID, [ struct.id ])
-  if (res.rows[0].count == '1') { return }
-  return yield db.exec(INSERT_ID, [ struct.id, struct.up, struct.down ])
+  var rows = yield db.exec(SELECT_ID, [ struct.id ])
+  if (rows[0].count == '0') {
+    return db.exec(INSERT, [ struct.id, struct.up, struct.down ])
+  }
 }
