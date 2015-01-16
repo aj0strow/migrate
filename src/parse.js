@@ -4,6 +4,10 @@ var fs = require('fs')
 var path = require('path')
 var async = require('async')
 
+// modules
+
+var debug = require('./debug')
+
 // exports
 
 exports.dir = parsedir
@@ -11,11 +15,17 @@ exports.file = parsefile
 
 // module
 
+// Ex:
+// parsedir(__dirname + '/migrations', function (e, structs) {
+//   typeof structs == 'array'
+// })
 function parsedir (dir, cb) {
+  debug(dir)
   fs.readdir(dir, function (e, files) {
     if (e) { return cb(e) }
 
     files = files.filter(isSQL).sort()
+    debug('%d migrations found', files.length)
     var paths = files.map(function (file) {
       return path.join(dir, file)
     })
@@ -23,6 +33,10 @@ function parsedir (dir, cb) {
   })
 }
 
+// Ex:
+// parsefile(__dirname + '/migration.sql', function (e, struct) {
+//   typeof struct == 'object'
+// })
 function parsefile (file, cb) {
   fs.readFile(file, 'utf8', function (e, str) {
     if (e) { return cb(e) }

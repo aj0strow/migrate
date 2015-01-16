@@ -1,6 +1,20 @@
+// env
+
 require('dotenv').load()
+var DATABASE_URL = process.env['DATABASE_URL']
+
+// dependencies
+
 var pg = require('pg')
-var db = new pg.Client(process.env['DATABASE_URL'])
+var assert = require('assert')
+
+// modules
+
+var sync = require('../src/sync')
+
+// tests
+
+var db = new pg.Client(DATABASE_URL)
 
 before(function (cb) {
   db.connect(cb)
@@ -10,19 +24,16 @@ after(function () {
   db.end()
 })
 
-var sync = require('../src/sync')
-var fs = require('fs')
-
 describe('sync', function () {
   before(function (cb) {
     sync(db, __dirname + '/migrations', cb)
   })
 
   it('should create migrations table', function (cb) {
-    db.query('select count(*) from migrations', function (e, results) {
+    db.query('select count(*) from migrations', function (e, res) {
       if (e) { return cb(e) }
-      console.error(e)
-      console.log(results)
+      assert.equal('1', res.rows[0].count)
+      cb()
     })
-  })  
+  })
 })

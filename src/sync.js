@@ -7,56 +7,66 @@ var async = require('async')
 // modules
 
 var parse = require('./parse')
+var debug = require('./debug')
 
 // exports
 
 module.exports = sync
 
+// queries
+
+var CREATE_TABLE = 'CREATE TABLE IF NOT EXISTS migrations (id text primary key, completed_at integer);'
+var SELECT_ID = 'SELECT count(*) FROM migrations WHERE id=$1;'
+var INSERT_ID = 'INSERT INTO migrations (id) VALUES ($1);'
+
 // module
 
-func
-
 function sync (db, dir, cb) {
+  debug('syncing file system')
   async.series([
     function (cb) {
-      var sql = 'CREATE TABLE IF NOT EXISTS migrations'
-              + ' (id text primary key, completed_at integer);'
-      exec(sql, [], cb)
+      exec(db, CREATE_TABLE, [], cb)
     },
     function (cb) {
-      parse.dir(dir, function (e, structs) {
-        if (e) { return cb(e) }
-        async.each(structs, check, cb)
-      })
-    }
+      checkdir(db, dir, cb)
+    },
   ], cb)
-  
-  
 }
 
-function checkdir (dir, cb) {
+function checkdir (db, dir, cb) {
   async.waterfall([
-    parse.dir.bind(null, dir),
-    checkstructs,
+    function (cb) {
+      parse.dir(dir, cb)
+    },
+    function (structs, cb) {
+      checkstructs(db, structs, cb)
+    },
   ], cb)
 }
 
-function checkstructs (structs, cb) {
-  async.each(structs, checkstruct, cb)
+function checkstructs (db, structs, cb) {
+  async.each(structs, function (struct, cb) {
+    checkstruct(db, struct, cb)
+  }, cb)
 }
 
 function checkstruct (db, struct, cb) {
-  var sql = 'SELECT count(*) FROM migrations WHERE id=$1'
-  exec(db, sql, [ struct.id ], function (e, results) {
+  exec(db, SELECT_ID, [ struct.id ], function (e, res) {
     if (e) { return cb(e) }
-    console.log(results)
-    cb()
+    if (res.rows[0].count == '1') {
+      return cb()
+    }
+    exec(db, INSERT_ID, [ struct.id ], cb)
   })
 }
 
 function exec (db, sql, args, cb) {
   var exec = function (cb) {
-    db.query(sql, args, cb)
+    if (args.length) {
+      db.query(sql, args, cb)
+    } else {
+      db.query(sql, cb)
+    }
   }
   if (cb) { exec(cb) }
   return exec
