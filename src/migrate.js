@@ -35,8 +35,17 @@ var UPDATE_DOWN = `
 
 // module
 
-function * up (db) {
+function * up (db, options) {
+  if (!options) { options = {} }
   var structs = yield db.exec(SELECT_UPS)
+
+  if (options.id) {
+    structs = structs.filter(function (struct) {
+      return struct.id <= options.id
+          || struct.id.startsWith(options.id)
+    })
+  }
+
   yield structs.map(function (struct) {
     debug('migrate up %s', struct.id)
     return db.exec(struct.up).then(function () {
@@ -45,8 +54,16 @@ function * up (db) {
   })
 }
 
-function * down (db) {
+function * down (db, options) {
+  if (!options) { options = {} }
   var structs = yield db.exec(SELECT_DOWNS)
+
+  if (options.id) {
+    structs = structs.filter(function (struct) {
+      return struct.id >= options.id
+    })
+  }
+
   yield structs.map(function (struct) {
     debug('migrate down %s', struct.id)
     return db.exec(struct.down).then(function () {

@@ -18,6 +18,6 @@ describe('sync', function () {
 
   it('should create migrations table', function * () {
     var rows = yield db.exec('select count(*) from migrations')
-    assert.equal('1', rows[0].count)
+    assert.equal('2', rows[0].count)
   })
 })

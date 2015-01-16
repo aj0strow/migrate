@@ -29,8 +29,8 @@ var SELECT_ID = `
 `
 
 var INSERT = `
-   insert into migrations (id, up, down)
-   values ($1, $2, $3);
+  insert into migrations (id, up, down)
+  values ($1, $2, $3);
 `
 
 // module

@@ -5,43 +5,54 @@ var assert = require('assert')
 // modules
 
 var db = require('./db')
+var parse = require('../src/parse')
 var sync = require('../src/sync')
 var migrate = require('../src/migrate')
 
 // tests
 
-var struct = {
-  id: 'migrate_test_1',
-  up: 'create table migrate_tests (name text);',
-  down: 'drop table migrate_tests;',
-}
-
-var INSERT = `
-  insert into migrate_tests (name)
-  values ($1);
+var SELECT = `
+  select * from users
+  where name = $1;
 `
 
 describe('migrate', function () {
   beforeEach(function * () {
-    return yield sync(db, [ struct ])
+    var structs = yield parse.dir(__dirname + '/migrations')
+    yield sync(db, structs)
   })
 
-  it('should migrate up', function * () {
-    yield migrate.up(db)
-    yield db.exec(INSERT, [ 'AJ' ])
+  describe('up', function () {
+    it('should run migrations once', function * () {
+      yield migrate.up(db)
+      yield migrate.up(db)
+      var rows = yield db.exec(SELECT, [ 'Gary' ])
+      assert.equal(1, rows.length)
+    })
+
+    it('should allow stop id', function * () {
+      yield migrate.up(db, { id: '001' })
+      var rows = yield db.exec(SELECT, [ 'Gary' ])
+      assert.equal(0, rows.length)
+    })
   })
-  
-  it('should migrate down', function * () {
-    yield migrate.up(db)
-    yield migrate.down(db)
-    try {
-      yield db.exec(INSERT, [ 'AJ' ])
-    } catch (e) {
-      assert(/does not exist/.test(e.message))
-    }    
+
+  describe('down', function () {
+    it('should run migrations once', function * () {
+      yield migrate.down(db)
+      yield migrate.up(db)
+      yield migrate.down(db)
+      yield migrate.down(db)
+    })
+
+    it('should allow stop id', function * () {
+      yield migrate.up(db)
+      yield migrate.down(db, { id: '002' })
+      yield db.exec(SELECT, [ 'AJ' ])
+    })
   })
 
   afterEach(function * () {
-    return yield db.exec('drop table if exists migrate_tests;')
+    return yield db.exec('drop table if exists users;')
   })
 })

@@ -23,6 +23,6 @@ describe('parse.dir', function () {
 
   it('should parse all files', function * () {
     var structs = yield parse.dir(dir)
-    assert.equal(1, structs.length)
+    assert.equal(2, structs.length)
   })
 })
