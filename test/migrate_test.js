@@ -64,6 +64,15 @@ describe('migrate', function () {
     })
   })
 
+  describe('redo', function () {
+    it('should run migrations again', function * () {
+      yield migrate.up(db)
+      yield migrate.redo(db)
+      var rows = yield db.exec(SELECT, [ 'Gary' ])
+      assert.equal(1, rows.length)
+    })
+  })
+
   afterEach(function * () {
     return yield db.exec('drop table if exists users;')
   })

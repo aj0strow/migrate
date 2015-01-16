@@ -6,6 +6,7 @@ var debug = require('./debug')
 
 exports.up = up
 exports.down = down
+exports.redo = redo
 
 // queries
 
@@ -74,4 +75,12 @@ function * down (db, options) {
       return db.exec(UPDATE_DOWN, [ struct.id ])
     })
   })
+}
+
+function * redo (db, options) {
+  if (!options) {
+    options = { n: 1 }
+  }
+  yield down(db, options)
+  yield up(db)
 }
