@@ -4,8 +4,8 @@
   "dependencies": {
     "co": "^4.1.0",
     "co-fs": "^1.2.0",
-    "commander": "^2.6.0",
     "debug": "^2.1.1",
+    "minimist": "^1.1.0",
     "pg": "^4.2.0"
   },
   "devDependencies": {
