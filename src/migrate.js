@@ -36,17 +36,22 @@ var UPDATE_DOWN = `
 
 // module
 
-function * up (db, options) {
-  if (!options) { options = {} }
+// Ex:
+// migrate.up(db)
+// migrate.up(db, 1)
+// migrate.up(db, '002')
+function * up (db, limit) {
   var structs = yield db.exec(SELECT_UPS)
 
-  if (options.id) {
-    structs = structs.filter(function (struct) {
-      return struct.id <= options.id
-          || struct.id.startsWith(options.id)
-    })
-  } else if (options.n > 0) {
-    structs = structs.slice(0, options.n)
+  if (arguments.length == 2) {
+    if (Number.isInteger(limit)) {
+      structs = structs.slice(0, limit)
+    } else {
+      structs = structs.filter(function (struct) {
+        return struct.id <= limit
+            || struct.id.startsWith(limit)
+      })
+    }
   }
 
   yield structs.map(function (struct) {
@@ -57,16 +62,21 @@ function * up (db, options) {
   })
 }
 
-function * down (db, options) {
-  if (!options) { options = {} }
+// Ex:
+// migrate.down(db)
+// migrate.down(db, 1)
+// migrate.down(db, '001')
+function * down (db, limit) {
   var structs = yield db.exec(SELECT_DOWNS)
 
-  if (options.id) {
-    structs = structs.filter(function (struct) {
-      return struct.id >= options.id
-    })
-  } else if (options.n > 0) {
-    structs = structs.slice(0, options.n)
+  if (arguments.length == 2) {
+    if (Number.isInteger(limit)) {
+      structs = structs.slice(0, limit)
+    } else {
+      structs = structs.filter(function (struct) {
+        return struct.id >= limit
+      })
+    }
   }
 
   yield structs.map(function (struct) {
@@ -77,10 +87,13 @@ function * down (db, options) {
   })
 }
 
-function * redo (db, options) {
-  if (!options) {
-    options = { n: 1 }
+// Ex:
+// migrate.redo(db)
+// migrate.redo(db, 3)
+function * redo (db, limit) {
+  if (arguments.length == 1) {
+    limit = 1
   }
-  yield down(db, options)
+  yield down(db, limit)
   yield up(db)
 }
