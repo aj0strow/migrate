@@ -10,29 +10,35 @@ var migrate = require('../src/migrate')
 
 // tests
 
-describe('migrate', function () {
-  var struct = {
-    id: 'migrate_test_1',
-    up: 'create table migrate_tests (name text);',
-    down: 'drop table migrate_tests;',
-  }
+var struct = {
+  id: 'migrate_test_1',
+  up: 'create table migrate_tests (name text);',
+  down: 'drop table migrate_tests;',
+}
 
-  it('should migrate up and down', function * () {
-    yield sync(db, [ struct ])
+var INSERT = `
+  insert into migrate_tests (name)
+  values ($1);
+`
+
+describe('migrate', function () {
+  beforeEach(function * () {
+    return yield sync(db, [ struct ])
+  })
+
+  it('should migrate up', function * () {
     yield migrate.up(db, [ struct ])
-    try {
-      yield db.exec('insert into migrate_tests (name) values ($1);', [ 'AJ' ])
-    } catch (e) {
-      assert.equal(null, e)
-    }
+    yield db.exec(INSERT, [ 'AJ' ])
   })
   
-  it('should update schema', function () {
-    
-  })
-
-  it('should keep track of itself', function () {
-    
+  it('should migrate down', function * () {
+    yield migrate.up(db, [ struct ])
+    yield migrate.down(db, [ struct ])
+    try {
+      yield db.exec(INSERT, [ 'AJ' ])
+    } catch (e) {
+      assert(/does not exist/.test(e.message))
+    }    
   })
 
   afterEach(function * () {
