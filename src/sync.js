@@ -1,8 +1,3 @@
-// dependencies
-
-var fs = require('co-fs')
-var path = require('path')
-
 // modules
 
 var parse = require('./parse')

@@ -36,7 +36,6 @@ var UPDATE_DOWN = `
 
 // module
 
-// Ex:
 // migrate.up(db)
 // migrate.up(db, 1)
 // migrate.up(db, '002')
@@ -60,7 +59,6 @@ function * up (db, limit) {
   })
 }
 
-// Ex:
 // migrate.down(db)
 // migrate.down(db, 1)
 // migrate.down(db, '001')
@@ -83,7 +81,6 @@ function * down (db, limit) {
   })
 }
 
-// Ex:
 // migrate.redo(db)
 // migrate.redo(db, 3)
 function * redo (db, limit) {

@@ -14,10 +14,7 @@ exports.file = parsefile
 
 // module
 
-// Ex:
-// parsedir(__dirname + '/migrations', function (e, structs) {
-//   typeof structs == 'array'
-// })
+// parsedir('migrations')
 function * parsedir (dir) {
   debug(dir)
   var files = (yield fs.readdir(dir)).filter(isSQL)
@@ -27,10 +24,7 @@ function * parsedir (dir) {
   return yield paths.map(parsefile)
 }
 
-// Ex:
-// parsefile(__dirname + '/migration.sql', function (e, struct) {
-//   typeof struct == 'object'
-// })
+// parsefile('migration.sql')
 function * parsefile (file) {
   var str = yield fs.readFile(file, 'utf8')
   var struct = parsestr(str)

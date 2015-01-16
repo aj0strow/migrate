@@ -15,6 +15,8 @@ function Connection (url) {
 }
 
 Connection.prototype = {
+
+  // db.exec('sql statement $1', [ 'value' ])
   exec: function (str, args) {
     return new Promise(function (resolve, reject) {
       function cb (e, response) {
@@ -29,7 +31,8 @@ Connection.prototype = {
     }.bind(this))
   },
 
-  connect: function (cb) {
+  // db.connect()
+  connect: function () {
     return new Promise(function (resolve, reject) {
       this.db.connect(function (e) {
         if (e) { return reject(e) }
