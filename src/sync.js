@@ -1,7 +1,12 @@
+// dependencies
+
+var pluck = require('lodash').pluck
+
 // modules
 
 var parse = require('./parse')
 var debug = require('./debug')
+var hash = require('./hash')
 
 // exports
 
@@ -20,9 +25,9 @@ var CREATE_TABLE = `
   );
 `
 
-var SELECT_ID = `
-  select count(*) from migrations
-  where id = $1 and migrated_at <> null;
+var SELECT_IDS = `
+  select id from migrations
+  where migrated_at <> null;
 `
 
 var INSERT = `
@@ -33,16 +38,14 @@ var INSERT = `
 // module
 
 function * sync (db, structs) {
-  debug('syncing file system')
   yield db.exec(CREATE_TABLE)
-  return yield structs.map(function (struct) {
-    return syncstruct(db, struct)
+  var rows = yield db.exec(SELECT_IDS)
+  var prevs = new Set(pluck(rows, 'id'))
+  structs = structs.filter(function (struct) {
+    return !prevs.has(struct.id)
   })
-}
-
-function * syncstruct (db, struct) {
-  var rows = yield db.exec(SELECT_ID, [ struct.id ])
-  if (rows[0].count == '0') {
-    return db.exec(INSERT, [ struct.id, struct.up, struct.down, struct.up_hash, struct.down_hash ])
-  }
+  return yield structs.map(function (struct) {
+    debug('sync %s', struct.id)
+    return db.exec(INSERT, [ struct.id, struct.up, struct.down, hash(struct.up), hash(struct.down) ])
+  })
 }

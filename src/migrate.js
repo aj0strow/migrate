@@ -52,7 +52,7 @@ function * up (db, limit) {
   }
 
   yield structs.map(function (struct) {
-    debug('migrate up %s', struct.id)
+    debug('  up %s', struct.id)
     return db.exec(struct.up).then(function () {
       return db.exec(UPDATE_UP, [ struct.id ])
     })
@@ -74,7 +74,7 @@ function * down (db, limit) {
   }
 
   yield structs.map(function (struct) {
-    debug('migrate down %s', struct.id)
+    debug('down %s', struct.id)
     return db.exec(struct.down).then(function () {
       return db.exec(UPDATE_DOWN, [ struct.id ])
     })
