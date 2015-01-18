@@ -26,19 +26,3 @@ describe('parse.dir', function () {
     assert.equal(2, structs.length)
   })
 })
-
-describe('parse.hash', function () {
-  it('should ignore whitespace', function () {
-    assert.equal(parse.hash('a  '), parse.hash('a'))
-  })
-
-  it('should ignore line comments', function () {
-    var sql = '-- comment\n--more\n  create table;'
-    assert.equal(parse.hash(sql), parse.hash('create table;'))
-  })
-
-  it('should ignore block comments', function () {
-    var sql = '/* this is \n not helpful */ create table;'
-    assert.equal(parse.hash(sql), parse.hash('create table;'))
-  })
-})

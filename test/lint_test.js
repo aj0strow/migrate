@@ -4,7 +4,7 @@ var assert = require('assert')
 
 // modules
 
-var parse = require('../src/parse')
+var hash = require('../src/hash')
 var sync = require('../src/sync')
 var lint = require('../src/lint')
 var db = require('./db')
@@ -13,11 +13,17 @@ var db = require('./db')
 
 describe('lint', function () {
   it('should catch small differences', function * () {
-    var structs = yield parse.dir(__dirname + '/migrations')
-    yield sync(db, structs)
-    structs[0].down = 'drop table if exists users;'
-    structs[0].down_hash = parse.hash(structs[0].down)
-    var warnings = yield lint(db, structs)
-    assert(warnings[0].startsWith('001_create_users'))
+    var struct = {
+      id: '001_create_users',
+      up: 'create table users (id serial);',
+      down: 'drop table users;',
+    }
+    struct.up_hash = hash(struct.up)
+    struct.down_hash = hash(struct.down)
+    yield sync(db, [ struct ])
+    struct.down = 'drop table user;'
+    struct.down_hash = hash(struct.down)
+    var warnings = yield lint(db, [ struct ])
+    assert(warnings[0].startsWith(struct.id))
   })
 })
