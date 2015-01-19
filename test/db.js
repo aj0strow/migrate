@@ -20,7 +20,8 @@ before(function * () {
 })
 
 afterEach(function * () {
-  yield db.exec('truncate migrations cascade;')
+  yield db.exec('drop table if exists users;')
+  return yield db.exec('truncate migrations cascade;')
 })
 
 after(function () {
