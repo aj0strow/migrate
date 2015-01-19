@@ -1,3 +1,7 @@
+// dependencies
+
+var indexBy = require('lodash').indexBy
+
 // modules
 
 var debug = require('./debug')
@@ -10,38 +14,28 @@ exports.redo = redo
 
 // queries
 
-var SELECT_UPS = `
-  select id, up from migrations
-  where migrated_at is null
-  order by id asc;
+var INSERT = `
+  insert into migrations (id, up, down, checksum, migrated_at)
+  values ($1, $2, $3, $4, now());
 `
 
-var UPDATE_UP = `
-  update migrations
-  set migrated_at = now()
-  where id = $1;
-`
-
-var SELECT_DOWNS = `
-  select id, down from migrations
-  where migrated_at is not null
-  order by id desc;
-`
-
-var UPDATE_DOWN = `
-  update migrations
-  set migrated_at = null
+var DELETE = `
+  delete from migrations
   where id = $1;
 `
 
 // module
 
-// migrate.up(db)
-// migrate.up(db, 1)
-// migrate.up(db, '002')
-function * up (db, limit) {
-  var structs = yield db.exec(SELECT_UPS)
+function * up (db, structs, limit) {
+  if (arguments.length == 2) { limit = false }
 
+  // exclude previous migrations
+  var ids = yield selectids(db)
+  structs = structs.filter(function (struct) {
+    return !ids[struct.id]
+  })
+
+  // limit amount of new migrations
   if (Number.isInteger(limit)) {
     structs = structs.slice(0, limit)
   } else if (limit) {
@@ -51,20 +45,26 @@ function * up (db, limit) {
     })
   }
 
+  // run migrations in order
   yield structs.map(function (struct) {
     debug('  up %s', struct.id)
     return db.exec(struct.up).then(function () {
-      return db.exec(UPDATE_UP, [ struct.id ])
+      return db.exec(INSERT, [ struct.id, struct.up, struct.down, struct.checksum ])
     })
   })
 }
 
-// migrate.down(db)
-// migrate.down(db, 1)
-// migrate.down(db, '001')
-function * down (db, limit) {
-  var structs = yield db.exec(SELECT_DOWNS)
+function * down (db, structs, limit) {
+  if (arguments.length == 2) { limit = 1 }
 
+  // exclude new migrations
+  var ids = yield selectids(db)
+  structs = structs.filter(function (struct) {
+    return ids[struct.id]
+  })
+  structs = structs.reverse()
+
+  // increase amount of rollbacks
   if (Number.isInteger(limit)) {
     structs = structs.slice(0, limit)
   } else if (limit) {
@@ -73,20 +73,25 @@ function * down (db, limit) {
     })
   }
 
+  // rollback in order
   yield structs.map(function (struct) {
     debug('down %s', struct.id)
     return db.exec(struct.down).then(function () {
-      return db.exec(UPDATE_DOWN, [ struct.id ])
+      return db.exec(DELETE, [ struct.id ])
     })
   })
 }
 
-// migrate.redo(db)
-// migrate.redo(db, 3)
-function * redo (db, limit) {
-  if (!Number.isInteger(limit)) {
-    limit = 1
-  }
-  yield down(db, limit)
-  yield up(db)
+function * redo (db, structs, limit) {
+  if (arguments.length == 2) { limit = 1 }
+
+  yield down(db, structs, limit)
+  yield up(db, structs, limit)
+}
+
+// helpers
+
+function * selectids (db) {
+  var rows = yield db.exec('select id from migrations;')
+  return indexBy(rows, 'id')
 }

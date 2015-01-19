@@ -6,6 +6,7 @@ var path = require('path')
 // modules
 
 var debug = require('./debug')
+var hash = require('./hash')
 
 // exports
 
@@ -52,6 +53,7 @@ function parsestr (str) {
   var struct = {
     up: up.join('\n').trim(),
     down: down.join('\n').trim(),
+    checksum: hash(str)
   }
 
   return struct

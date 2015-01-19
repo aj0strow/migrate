@@ -9,17 +9,18 @@ var pg = require('../src/pg')
 
 // exports
 
-var db = pg(DATABASE_URL)
+var db = pg.createClient(DATABASE_URL)
 module.exports = db
 
 // module
 
 before(function * () {
   yield db.connect()
+  return yield db.init()
 })
 
 afterEach(function * () {
-  return yield db.exec('drop table if exists migrations;')
+  yield db.exec('truncate migrations cascade;')
 })
 
 after(function () {
