@@ -23,16 +23,16 @@ function * lint (db, structs) {
     var row = rows.shift()
     var struct = structs.shift()
 
-    // check for new file that is missing migration
-    if (struct.id < row.id) {
-      rows.unshift(row)
-      errors.push({ id: struct.id, code: 'insert' })
-    }
-    
-    // check for migration that is missing file
-    else if (struct.id > row.id) {
+    // check for db migration missing file
+    if (!struct || struct.id > row.id) {
       structs.unshift(struct)
       errors.push({ id: row.id, code: 'delete' })
+    }
+
+    // check for new file that is missing migration
+    else if (struct.id < row.id) {
+      rows.unshift(row)
+      errors.push({ id: struct.id, code: 'insert' })
     }
 
     // check for file changes on migrations

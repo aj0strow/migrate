@@ -31,7 +31,7 @@ var USAGE = `
   up   : migrate up database (optional prefix for target)
   down : migrate down database (optional prefix for target)
   redo : migrate down then back up to current migration
-  lint : check migration files for database errors
+  lint : check migration files for database inconsistencies
 
  Arguments:
 
@@ -43,8 +43,8 @@ var USAGE = `
   -h, --help          output usage information
   --version           output the version number
   -n, --count <n>     number of migrations
-  --all               migrate all files (default for up)
-  --dir <path>        migrations directory (default pwd)
+  --all               migrate all files (default for up command)
+  --dir <path>        migrations directory (default $MIGRATIONS_DIR)
   --url/uri <url>     postgres url (default $DATABASE_URL)
 
  Examples:
@@ -94,7 +94,10 @@ if (!url) {
 var db = pg.createClient(url)
 
 
-var dir = argv.dir || process.cwd()
+var dir = argv.dir || process.env['MIGRATIONS_DIR']
+if (!dir) {
+  fail('could not determine migrations dir')
+}
 
 
 co(function * () {
@@ -113,7 +116,9 @@ co(function * () {
     return yield migrate[command](db, structs, limit)
   case 'lint':
     var errors = yield lint(db, structs)
-    return errors.forEach(lintf)
+    errors.forEach(printlint)
+    if (errors.length) { process.stderr.write('\n') }
+    return
   default:
     fail('no command %s', command)
   }
@@ -121,6 +126,7 @@ co(function * () {
 }).then(function () {
   process.exit(0)
 }).catch(function (e) {
+  console.error(e)
   fail('%s: %s', e.name, e.message)
 })
 
@@ -132,8 +138,31 @@ function fail () {
   process.exit(1)
 }
 
-function lintf (error) {
-  process.stderr.write('')
-  console.log('error')
-  process.stderr.write(chalk.red(''))
+function printlint (error) {
+  process.stderr.write('\n ' + chalk.red(error.id) + '\n ')
+  switch (error.code) {
+  case 'insert':
+    return process.stderr.write('file added at illegal sort index\n')
+  case 'delete':
+    return process.stderr.write('file deleted but migration still exists\n')
+  case 'update':
+    process.stderr.write('file changed after migration\n')
+    process.stderr.write('\n')
+    return error.data.forEach(printdiff)
+  }
+}
+
+function printdiff (data) {
+  var lines = data.value.split('\n').map(function (line) {
+    if (data.added) {
+      return chalk.green('+' + line)
+    } else if (data.removed) {
+      return chalk.red('-' + line)
+    } else {
+      return chalk.gray(' ' + line)
+    }
+  })
+  lines.forEach(function (line) {
+    process.stderr.write(line + '\n')
+  })
 }
