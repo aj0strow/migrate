@@ -27,8 +27,6 @@ var DELETE = `
 // module
 
 function * up (db, structs, limit) {
-  if (arguments.length == 2) { limit = false }
-
   // exclude previous migrations
   var ids = yield selectids(db)
   structs = structs.filter(function (struct) {
@@ -55,8 +53,6 @@ function * up (db, structs, limit) {
 }
 
 function * down (db, structs, limit) {
-  if (arguments.length == 2) { limit = 1 }
-
   // exclude new migrations
   var ids = yield selectids(db)
   structs = structs.filter(function (struct) {
@@ -71,6 +67,8 @@ function * down (db, structs, limit) {
     structs = structs.filter(function (struct) {
       return struct.id >= limit
     })
+  } else {
+    structs = structs.slice(0, 1)
   }
 
   // rollback in order
@@ -83,10 +81,13 @@ function * down (db, structs, limit) {
 }
 
 function * redo (db, structs, limit) {
-  if (arguments.length == 2) { limit = 1 }
+  // ensure no new migrations
+  var rows = yield db.exec('select id from migrations order by id desc limit 1;')
+  if (rows.length == 0) { return }
+  var id = rows[0].id
 
   yield down(db, structs, limit)
-  yield up(db, structs, limit)
+  yield up(db, structs, id)
 }
 
 // helpers

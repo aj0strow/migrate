@@ -1,49 +1,70 @@
 #!/usr/bin/env node
 
+// env
+
+require('dotenv').load()
+
 // dependencies
 
 var minimist = require('minimist')
 var co = require('co')
+var util = require('util')
+var chalk = require('chalk')
 var pkg = require('../package.json')
-var argv = minimist(process.argv.slice(2))
+
+// modules
+
+var pg = require('../src/pg')
+var parse = require('../src/parse')
+var migrate = require('../src/migrate')
+var lint = require('../src/lint')
 
 // docs
 
 var USAGE = `
-  Usage:
+ Usage:
 
-   $ migrate [command] [options]
+  $ migrate [command] [arguments] [options]
 
-  Commands:
+ Commands:
 
-    up [prefix]    migrate up database (optional prefix for target)
-    down [prefix]  migrate down database (optional prefix for target)
+  up   : migrate up database (optional prefix for target)
+  down : migrate down database (optional prefix for target)
+  redo : migrate down then back up to current migration
+  lint : check migration files for database errors
 
-  Options:
+ Arguments:
 
-    -h, --help          output usage information
-    --version           output the version number
-    -n, --count <n>     number of migrations
-    --dir <path>        migrations directory (default pwd)
-    --url/uri <url>     postgres url (default $DATABASE_URL)
+  An optional filename prefix. For migrating up, every filename <= prefix
+  will be migrated. For down or redo, every filename >= prefix. 
 
-  Examples:
+ Options:
 
-    Run all pending migrations.
+  -h, --help          output usage information
+  --version           output the version number
+  -n, --count <n>     number of migrations
+  --all               migrate all files (default for up)
+  --dir <path>        migrations directory (default pwd)
+  --url/uri <url>     postgres url (default $DATABASE_URL)
 
-     $ migrate up --url postgres://localhost/dbname --dir db/migrations
+ Examples:
 
-    Undo the last three migrations.
+  Run all pending migrations.
 
-     $ migrate down --dir db/migrations -n 3
+   $ migrate up --url postgres://localhost/dbname --dir db/migrations
 
-    Redo the last migration with debug info.
+  Undo the last three migrations.
 
-     $ DEBUG=migrate migrate redo --dir db/migrations
+   $ migrate down -n 3
+
+  Redo the last migration and debug this command.
+
+   $ DEBUG=migrate migrate redo
 `
 
 // options
 
+var argv = minimist(process.argv.slice(2))
 var args = argv._
 var command = args.shift()
 
@@ -57,65 +78,62 @@ if (argv.version || argv.v || command == 'version') {
   process.exit(0)
 }
 
-var key = args.shift()
+
+var prefix = args.shift()
 var count = argv.n || argv.count
-
-if (key && count) {
-  console.error('you must choose either a target file prefix or a migration count, not both')
-  process.exit(1)
-} else if (count) {
-  count = +count
+if (prefix && count || prefix && argv.all || count && argv.all) {
+  fail('file prefix, count option, all option are mutually exclusive')
 }
+var limit = prefix || (+count) || argv.all
 
-var dir = argv.dir
-
-if (!dir) {
-  dir = process.cwd()
-}
 
 var url = argv.url || argv.uri || process.env['DATABASE_URL']
 if (!url) {
-  console.error('couldnt determine database url')
-  process.exit(1)
+  fail('could not determine database url')
 }
+var db = pg.createClient(url)
 
-// script
 
-var pg = require('../src/pg')
-var parse = require('../src/parse')
-var sync = require('../src/sync')
-var migrate = require('../src/migrate')
-var debug = require('../src/debug')
+var dir = argv.dir || process.cwd()
 
-var db = pg(url)
 
 co(function * () {
+
   yield db.connect()
+  yield db.init()
   var structs = yield parse.dir(dir)
   if (!structs.length) {
-    console.error('no sql files found in %s', dir)
-    process.exit(1)
+    fail('no sql files found in %s', dir)
   }
-  yield sync(db, structs)
 
   switch (command) {
   case 'up':
-    yield migrate.up(db, key || count)
-    break
   case 'down':
-    yield migrate.down(db, key || count)
-    break
   case 'redo':
-    yield migrate.redo(db, count)
-    break
+    return yield migrate[command](db, structs, limit)
+  case 'lint':
+    var errors = yield lint(db, structs)
+    return errors.forEach(lintf)
   default:
-    console.error('no command %s', command)
-    process.exit(1)
+    fail('no command %s', command)
   }
+
 }).then(function () {
-  debug('done')
   process.exit(0)
 }).catch(function (e) {
-  console.error(e)
-  process.exit(1)
+  fail('%s: %s', e.name, e.message)
 })
+
+// helpers
+
+function fail () {
+  var str = util.format.apply(util, arguments)
+  process.stderr.write(chalk.red(str) + '\n')
+  process.exit(1)
+}
+
+function lintf (error) {
+  process.stderr.write('')
+  console.log('error')
+  process.stderr.write(chalk.red(''))
+}
