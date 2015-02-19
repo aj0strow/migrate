@@ -2,6 +2,7 @@
 
 var fs = require('co-fs')
 var path = require('path')
+var merge = require('lodash').merge
 
 // modules
 
@@ -10,30 +11,28 @@ var hash = require('./hash')
 
 // exports
 
-exports.dir = parsedir
-exports.file = parsefile
-
-// module
-
-// parsedir('migrations')
-function * parsedir (dir) {
+exports.heads = function * (dir) {
   debug(dir)
-  var files = (yield fs.readdir(dir)).filter(isSQL)
-  var paths = files.sort().map(function (file) {
-    return path.join(dir, file)
+
+  // read all sql file descriptors
+  var fds = (yield fs.readdir(dir)).filter(isSQL).sort()
+
+  // transform to incomplete migration descriptors
+  return fds.map(function (fd) {
+    return {
+      id: path.basename(fd, '.sql'),
+      filename: fd,
+      filepath: path.join(dir, fd),
+    }
   })
-  return yield paths.map(parsefile)
 }
 
-// parsefile('migration.sql')
-function * parsefile (file) {
-  var str = yield fs.readFile(file, 'utf8')
-  var struct = parsestr(str)
-  struct.id = path.basename(file, '.sql')
-  return struct
+exports.body = function * (head) {
+  var str = yield fs.readFile(head.filepath, 'utf8')
+  return merge({}, head, exports.parse(str))
 }
 
-function parsestr (str) {
+exports.parse = function (str) {
   var up = []
   var down = []
   var state = 0
@@ -50,13 +49,11 @@ function parsestr (str) {
     }
   })
 
-  var struct = {
+  return {
     up: up.join('\n').trim(),
     down: down.join('\n').trim(),
     checksum: hash(str)
   }
-
-  return struct
 }
 
 // helpers

@@ -16,27 +16,22 @@ var SELECT = `
 `
 
 describe('migrate', function () {
-  var structs
+  var heads = null
+
   before(function * () {
-    structs = yield parse.dir(__dirname + '/migrations')
+    heads = yield parse.heads(__dirname + '/migrations')
   })
 
   describe('up', function () {
     it('should run migrations once', function * () {
-      yield migrate.up(db, structs)
-      yield migrate.up(db, structs)
+      yield migrate.up(db, heads)
+      yield migrate.up(db, heads)
       var rows = yield db.exec(SELECT, [ 'Gary' ])
       assert.equal(1, rows.length)
     })
 
-    it('should allow stop id', function * () {
-      yield migrate.up(db, structs, '001')
-      var rows = yield db.exec(SELECT, [ 'Gary' ])
-      assert.equal(0, rows.length)
-    })
-
-    it('should allow stop n', function * () {
-      yield migrate.up(db, structs, 1)
+    it('should respect limit option', function * () {
+      yield migrate.up(db, heads, { limit: 1 })
       var rows = yield db.exec(SELECT, [ 'Gary' ])
       assert.equal(0, rows.length)
     })
@@ -44,28 +39,22 @@ describe('migrate', function () {
 
   describe('down', function () {
     it('should run migrations once', function * () {
-      yield migrate.up(db, structs)
-      yield migrate.down(db, structs)
-      yield migrate.down(db, structs)
+      yield migrate.up(db, heads)
+      yield migrate.down(db, heads)
+      yield migrate.down(db, heads)
     })
 
-    it('should allow stop id', function * () {
-      yield migrate.up(db, structs)
-      yield migrate.down(db, structs, '002')
-      yield db.exec(SELECT, [ 'AJ' ])
-    })
-
-    it('should allow stop n', function * () {
-      yield migrate.up(db, structs)
-      yield migrate.down(db, structs, 1)
-      yield db.exec(SELECT, [ 'AJ' ])
+    it('should respect limit option', function * () {
+      yield migrate.up(db, heads)
+      yield migrate.down(db, heads, { limit: false })
+      yield db.exec(SELECT, [ 'AJ' ]).catch(assert)
     })
   })
 
   describe('redo', function () {
     it('should run migrations again', function * () {
-      yield migrate.up(db, structs)
-      yield migrate.redo(db, structs)
+      yield migrate.up(db, heads)
+      yield migrate.redo(db, heads)
       var rows = yield db.exec(SELECT, [ 'Gary' ])
       assert.equal(1, rows.length)
     })

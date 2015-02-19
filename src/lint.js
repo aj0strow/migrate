@@ -5,47 +5,39 @@ var compact = require('lodash').compact
 
 // exports
 
-module.exports = lint
-
-// module
-
-var SELECT = `
-  select * from migrations
-  order by id asc;
-`
-
-function * lint (db, structs) {
-  structs = structs.slice(0)
-  var rows = yield db.exec(SELECT)
-
+module.exports = function * (db, migrations) {
+  var rows = yield db.exec(`
+    select * from migrations
+    order by id asc;
+  `)
   var errors = []
   while (rows.length) (function () {
     var row = rows.shift()
-    var struct = structs.shift()
+    var migration = migrations.shift()
 
     // check for db migration missing file
-    if (!struct || struct.id > row.id) {
-      structs.unshift(struct)
+    if (!migration || migration.id > row.id) {
+      migrations.unshift(migration)
       errors.push({ id: row.id, code: 'delete' })
     }
 
     // check for new file that is missing migration
-    else if (struct.id < row.id) {
+    else if (migration.id < row.id) {
       rows.unshift(row)
-      errors.push({ id: struct.id, code: 'insert' })
+      errors.push({ id: migration.id, code: 'insert' })
     }
 
     // check for file changes on migrations
-    else if (struct.checksum != row.checksum) {
-      errors.push({ id: struct.id, code: 'update', data: diffstruct(row, struct) })
+    else if (migration.checksum != row.checksum) {
+      errors.push({ id: migration.id, code: 'update', data: diffrow(row, migration) })
     }
   })()
   return errors
 }
 
-function diffstruct (row, struct) {
+function diffrow (row, migration) {
   var changes = []
-  changes = changes.concat(diff.diffLines(row.up, struct.up))
-  changes = changes.concat(diff.diffLines(row.down, struct.down))
+  changes = changes.concat(diff.diffLines(row.up, migration.up))
+  changes = changes.concat(diff.diffLines(row.down, migration.down))
   return changes
 }

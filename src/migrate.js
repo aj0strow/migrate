@@ -1,93 +1,75 @@
 // dependencies
 
 var indexBy = require('lodash').indexBy
+var merge = require('lodash').merge
 
 // modules
 
 var debug = require('./debug')
+var parse = require('./parse')
 
 // exports 
 
-exports.up = up
-exports.down = down
-exports.redo = redo
-
-// queries
-
-var INSERT = `
-  insert into migrations (id, up, down, checksum, migrated_at)
-  values ($1, $2, $3, $4, now());
-`
-
-var DELETE = `
-  delete from migrations
-  where id = $1;
-`
-
-// module
-
-function * up (db, structs, limit) {
-  // exclude previous migrations
+exports.up = function * (db, heads, options) {
+  options = merge({ limit: false }, options)
   var ids = yield selectids(db)
-  structs = structs.filter(function (struct) {
-    return !ids[struct.id]
+
+  heads = heads.filter(function (head) {
+    return !ids[head.id]
   })
 
-  // limit amount of new migrations
-  if (Number.isInteger(limit)) {
-    structs = structs.slice(0, limit)
-  } else if (limit) {
-    structs = structs.filter(function (struct) {
-      return struct.id <= limit
-          || struct.id.startsWith(limit)
-    })
+  if (options.limit) {
+    heads = heads.slice(0, options.limit)
   }
 
-  // run migrations in order
-  yield structs.map(function (struct) {
-    debug('  up %s', struct.id)
-    return db.exec(struct.up).then(function () {
-      return db.exec(INSERT, [ struct.id, struct.up, struct.down, struct.checksum ])
+  var migrations = yield heads.map(parse.body)
+
+  yield migrations.map(function (migration) {
+    debug('  up %s', migration.id)
+
+    return db.exec(migration.up).then(function () {
+      return db.exec(`
+        insert into migrations (id, up, down, checksum, migrated_at)
+        values ($1, $2, $3, $4, now());
+      `, [ migration.id, migration.up, migration.down, migration.checksum ])
     })
   })
+
+  return migrations
 }
 
-function * down (db, structs, limit) {
-  // exclude new migrations
+exports.down = function * (db, heads, options) {
+  options = merge({ limit: 1 }, options)
   var ids = yield selectids(db)
-  structs = structs.filter(function (struct) {
-    return ids[struct.id]
-  })
-  structs = structs.reverse()
 
-  // increase amount of rollbacks
-  if (Number.isInteger(limit)) {
-    structs = structs.slice(0, limit)
-  } else if (limit) {
-    structs = structs.filter(function (struct) {
-      return struct.id >= limit
-    })
-  } else {
-    structs = structs.slice(0, 1)
+  heads = heads.filter(function (head) {
+    return ids[head.id]
+  })
+  heads = heads.reverse()
+
+  if (options.limit) {
+    heads = heads.slice(0, options.limit)
   }
 
-  // rollback in order
-  yield structs.map(function (struct) {
-    debug('down %s', struct.id)
-    return db.exec(struct.down).then(function () {
-      return db.exec(DELETE, [ struct.id ])
+  var migrations = yield heads.map(parse.body)
+
+  yield migrations.map(function (migration) {
+    debug('down %s', migration.id)
+    return db.exec(migration.down).then(function () {
+      return db.exec(`
+        delete from migrations
+        where id = $1;
+      `, [ migration.id ])
     })
   })
+
+  return migrations
 }
 
-function * redo (db, structs, limit) {
-  // ensure no new migrations
-  var rows = yield db.exec('select id from migrations order by id desc limit 1;')
-  if (rows.length == 0) { return }
-  var id = rows[0].id
-
-  yield down(db, structs, limit)
-  yield up(db, structs, id)
+exports.redo = function * (db, heads, options) {
+  options = merge({ limit: 1 }, options)
+  yield exports.down(db, heads, options)
+  return yield exports.up(db, heads, options)
 }
 
 // helpers

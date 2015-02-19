@@ -26,7 +26,11 @@ create table users (
 drop table users;
 ```
 
-Create a new `001_create_users.sql` file and save it to `db/migrations` for example. 
+Create a new `001_create_users.sql` file and save it to `db/migrations` for example. Make new migration files with the `new` command.
+
+```
+$ migrate new migration_name
+```
 
 ### Migrate Command
 
@@ -61,23 +65,17 @@ To undo and immediately redo the last migration.
 $ migrate redo
 ```
 
-You can specify a prefix to migrate to. For example to migrate `001`, `002` but not `003`.
+You can specify the number of migrations.
 
 ```sh
-$ migrate up 002
+$ migrate up -n 2
 ```
 
-Then migrate all the way up and rollback to the first migration.
+Then migrate all the way up and rollback once.
 
 ```sh
 $ migrate up
-$ migrate down 001
-```
-
-You can also specify the number of migrations regardless of prefix.
-
-```sh
-$ migrate redo -n 3
+$ migrate down -n 1
 ```
 
 ### Linting
@@ -101,12 +99,11 @@ $ migrate lint
 
  002_seed_users
  file deleted but migration still exists
-
 ```
 
 ### Future plans
 
-It occurred to me reading all the files at the beginning is wasteful, so I'll prolly refactor that. 
+I removed the prefix parameter, but want to add a new command `to` which migrates either up or down to a specific migration prefix. 
 
 I also want to write an `audit` feature that runs the migrations in a different schema, and checks that the rollback actually returns the schema to the original state. This might require fake data, etc. 
 

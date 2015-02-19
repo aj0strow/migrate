@@ -10,6 +10,9 @@ var minimist = require('minimist')
 var co = require('co')
 var util = require('util')
 var chalk = require('chalk')
+var fs = require('fs')
+var path = require('path')
+var moment = require('moment')
 var pkg = require('../package.json')
 
 // modules
@@ -28,21 +31,17 @@ var USAGE = `
 
  Commands:
 
-  up   : migrate up database (optional prefix for target)
-  down : migrate down database (optional prefix for target)
-  redo : migrate down then back up to current migration
-  lint : check migration files for database inconsistencies
-
- Arguments:
-
-  An optional filename prefix. For migrating up, every filename <= prefix
-  will be migrated. For down or redo, every filename >= prefix. 
+  new  : create new migration file
+  up   : migrate up database
+  down : migrate down database
+  redo : migrate down then back up
+  lint : check migration files for inconsistencies
 
  Options:
 
   -h, --help          output usage information
   --version           output the version number
-  -n, --count <n>     number of migrations
+  -n, --limit <int>   number of migrations
   --all               migrate all files (default for up command)
   --dir <path>        migrations directory (default $MIGRATIONS_DIR)
   --url/uri <url>     postgres url (default $DATABASE_URL)
@@ -78,15 +77,6 @@ if (argv.version || argv.v || command == 'version') {
   process.exit(0)
 }
 
-
-var prefix = args.shift()
-var count = argv.n || argv.count
-if (prefix && count || prefix && argv.all || count && argv.all) {
-  fail('file prefix, count option, all option are mutually exclusive')
-}
-var limit = prefix || (+count) || argv.all
-
-
 var url = argv.url || argv.uri || process.env['DATABASE_URL']
 if (!url) {
   fail('could not determine database url')
@@ -99,13 +89,32 @@ if (!dir) {
   fail('could not determine migrations dir')
 }
 
+if (command == 'new' || command == 'make') {
+  var timestamp = moment().format('YYYYMMDDHHMMSS')
+  var fd = path.join(dir, timestamp + '_' + args.shift() + '.sql')
+  var file = '-- \n\n--+ up\n\n\n\n--+ down\n\n\n'
+  fs.writeFile(fd, file, { encoding: 'utf8' }, function (e) {
+    if (e) {
+      fail('%s: %s', e.name, e.message)
+    } else {
+      process.exit(0)
+    }
+  })
+  return
+}
+
+var options = {}
+options.limit = argv.n || argv.limit
+if (options.all) {
+  options.limit = false
+}
 
 co(function * () {
 
   yield db.connect()
   yield db.init()
-  var structs = yield parse.dir(dir)
-  if (!structs.length) {
+  var heads = yield parse.heads(dir)
+  if (!heads.length) {
     fail('no sql files found in %s', dir)
   }
 
@@ -113,9 +122,10 @@ co(function * () {
   case 'up':
   case 'down':
   case 'redo':
-    return yield migrate[command](db, structs, limit)
+    return yield migrate[command](db, heads, options)
   case 'lint':
-    var errors = yield lint(db, structs)
+    var migrations = yield heads.map(parse.body)
+    var errors = yield lint(db, migrations)
     errors.forEach(printlint)
     if (errors.length) { process.stderr.write('\n') }
     return
