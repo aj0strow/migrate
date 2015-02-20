@@ -1,14 +1,14 @@
 {
   "name": "migrate",
   "version": "0.0.4",
-	"licence": "MIT",
-	"bin": {
-		"migrate": "./bin/migrate"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/aj0strow/migrate"
-	},
+  "licence": "MIT",
+  "bin": {
+    "migrate": "./bin/migrate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aj0strow/migrate"
+  },
   "dependencies": {
     "chalk": "^0.5.1",
     "co": "^4.1.0",
@@ -16,6 +16,7 @@
     "debug": "^2.1.1",
     "diff": "^1.2.1",
     "dotenv": "^0.4.0",
+    "lodash": "^3.2.0",
     "minimist": "^1.1.0",
     "moment": "^2.9.0",
     "pg": "^4.2.0"
