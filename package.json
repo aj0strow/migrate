@@ -1,6 +1,14 @@
 {
   "name": "migrate",
-  "version": "0.0.3",
+  "version": "0.0.4",
+	"licence": "MIT",
+	"bin": {
+		"migrate": "./bin/migrate"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/aj0strow/migrate"
+	},
   "dependencies": {
     "chalk": "^0.5.1",
     "co": "^4.1.0",
