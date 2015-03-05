@@ -90,7 +90,7 @@ if (!dir) {
 }
 
 if (command == 'new' || command == 'make') {
-  var timestamp = moment().format('YYYYMMDDHHMMSS')
+  var timestamp = moment().format('YYYYMMDDHHmmss')
   var fd = path.join(dir, timestamp + '_' + args.shift() + '.sql')
   var file = '-- \n\n--+ up\n\n\n\n--+ down\n\n\n'
   fs.writeFile(fd, file, { encoding: 'utf8' }, function (e) {
