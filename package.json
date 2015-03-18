@@ -1,6 +1,6 @@
 {
   "name": "migrate",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "licence": "MIT",
   "bin": {
     "migrate": "./bin/migrate"
@@ -27,6 +27,9 @@
     "mocha": "^2.1.0"
   },
   "scripts": {
-    "test": "mocha --require co-mocha test/*_test.js"
+    "test": "iojs node_modules/.bin/_mocha --require co-mocha test/*_test.js"
+  },
+  "engines": {
+    "iojs": "~1.0.0"
   }
 }

@@ -1,6 +1,58 @@
 # `migrate`
 
-Continuous development requires updates to the database as well. Frameworks like Ruby On Rails have database migrations built in, but I thought pure-SQL migrations could be an elegant option for small projects. 
+Build your schema incrementally in the language the database speaks -- SQL. Consider this my attempt to kill one small [leaky abstraction](http://en.wikipedia.org/wiki/Leaky_abstraction) among the ocean in web development. 
+
+There are a few advantages to SQL over using framework migrations like from Ruby On Rails.
+
+1. The database and migrations will out-live the api, and maybe even the programming language.
+2. PostgreSQL documentation is excellent and feature-complete. 
+3. No framework limitations, you can turn on and use UUIDs and JSON native types.
+4. Now you *know* if your schema has foreign key constraints, null checks, etc.
+
+Hopefully developers will share pure-SQL migrations for common schemas like user authentication, and useful triggers, plpgsql functions, etc.
+
+### Example
+
+From zero to flying:
+
+```sh
+npm install aj0strow/migrate
+export PATH=./node_modules/.bin:$PATH
+
+export DEBUG=migrate
+
+mkdir -p db/migrations
+createdb -E UTF8 my_app_test
+
+migrate new create_users --dir db/migrations
+
+# .. edit the file ..
+
+export MIGRATIONS_DIR=db/migrations
+migrate up --url postgres://localhost/my_app_test
+#  migrate db/migrations +0ms
+#  migrate up 20150318091656_create_users +8ms
+
+# .. edit the file ..
+
+export DATABASE_URL=postgres://localhost/my_app_test
+migrate redo
+#  migrate db/migrations +0ms
+#  migrate down 20150318091656_create_users +10ms
+#  migrate up 20150318091656_create_users +16ms
+
+psql my_app_test
+> \d
+#                 List of relations
+#  Schema |       Name        |   Type   |  Owner  
+# --------+-------------------+----------+---------
+#  public | migrations        | table    | you
+#  public | users             | table    | you
+#  public | users_id_seq      | sequence | you
+> \q
+
+# .. git add ..
+```
 
 ### Migrations
 
@@ -8,7 +60,7 @@ Migrations are `.sql` files stored in a directory with chronologically increasin
 
 With this history of migrations, its possible to recreate the database, and take it back to any point in time.
 
-The SQL is delimited with special comments `--+ up` and `--+ down` to start the `up` and `down` section respectively. There is only one up and down section because you can always make another migration file. 
+The SQL is delimited with special comments `--+ up` and `--+ down` to start the `up` and `down` sections respectively. There is only one up and down section because you can always make another migration file. 
 
 ```sql
 -- create the users table
